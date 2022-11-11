@@ -4,11 +4,32 @@
 ;; Max screen window size
 (add-hook 'window-setup-hook 'toggle-frame-maximized t)
 
-;;disable menu on start
-(menu-bar-mode -1)
+(column-number-mode)
 
-;; disable scroll bar on start
-(scroll-bar-mode -1)
+;; Enable line numbers for some modes
+(dolist (mode '(text-mode-hook
+                prog-mode-hook
+                conf-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 1))))
+
+;; Override some modes which derive from the above
+(dolist (mode '(org-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+
+;;disable warning for large files
+(setq large-file-warning-threshold nil)
+
+
+;; then in your init you can load all of the themes
+;; without enabling theme (or just load one)
+(load-theme 'ample t t)
+(load-theme 'ample-flat t t)
+(load-theme 'ample-light t t)
+;; choose one to enable
+;;(enable-theme 'ample)
+(enable-theme 'ample-flat)
+;; (enable-theme 'ample-light)
+
 
 ;; set GNU indentation
 (setq c-default-style "linux"
@@ -69,4 +90,26 @@
   (progn
     (bind-key "C-x g" 'magit-status)))
 
+(setq backup-directory-alist '(("." . "~/.emacs.d/backup"))
+      backup-by-copying      t  ; Don't de-link hard links
+      version-control        t  ; Use version numbers on backups
+      delete-old-versions    t  ; Automatically delete excess backups:
+      kept-new-versions      20 ; how many of the newest versions to keep
+      kept-old-versions      5) ; and how many of the old
 
+ (require 'compile)
+ (add-hook 'c-mode-hook
+           (lambda ()
+	     (unless (file-exists-p "Makefile")
+	       (set (make-local-variable 'compile-command)
+                    ;; emulate make's .c.o implicit pattern rule, but with
+                    ;; different defaults for the CC, CPPFLAGS, and CFLAGS
+                    ;; variables:
+                    ;; $(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+		    (let ((file (file-name-nondirectory buffer-file-name)))
+                      (format "%s -c -o %s.o %s %s %s"
+                              (or (getenv "CC") "gcc")
+                              (file-name-sans-extension file)
+                              (or (getenv "CPPFLAGS") "-DDEBUG=9")
+                              (or (getenv "CFLAGS") "-ansi -pedantic -Wall -g")
+			      file))))))
